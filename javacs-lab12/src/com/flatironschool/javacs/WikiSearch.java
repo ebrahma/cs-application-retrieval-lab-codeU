@@ -18,7 +18,6 @@ import redis.clients.jedis.Jedis;
  */
 public class WikiSearch {
 	
-	// map from URLs that contain the term(s) to relevance score
 	private Map<String, Integer> map;
 
 	/**
@@ -60,8 +59,12 @@ public class WikiSearch {
 	 * @return New WikiSearch object.
 	 */
 	public WikiSearch or(WikiSearch that) {
-        // FILL THIS IN!
-		return null;
+		Map<String, Integer> union = new HashMap<String, Integer>(map);
+		for (String term: that.map.keySet()) {
+			int relevance = totalRelevance(this.getRelevance(term), that.getRelevance(term));
+			union.put(term, relevance);
+		}
+		return new WikiSearch(union);
 	}
 	
 	/**
@@ -71,8 +74,14 @@ public class WikiSearch {
 	 * @return New WikiSearch object.
 	 */
 	public WikiSearch and(WikiSearch that) {
-        // FILL THIS IN!
-		return null;
+		Map<String, Integer> intersection = new HashMap<String, Integer>();
+		for (String term: map.keySet()) {
+			if (that.map.containsKey(term)) {
+				int relevance = totalRelevance(this.map.get(term), that.map.get(term));
+				intersection.put(term, relevance);
+			}
+		}
+		return new WikiSearch(intersection);
 	}
 	
 	/**
@@ -82,8 +91,11 @@ public class WikiSearch {
 	 * @return New WikiSearch object.
 	 */
 	public WikiSearch minus(WikiSearch that) {
-        // FILL THIS IN!
-		return null;
+		Map<String, Integer> difference = new HashMap<String, Integer>(map);
+		for (String term: that.map.keySet()) {
+			difference.remove(term);
+		}
+		return new WikiSearch(difference);
 	}
 	
 	/**
@@ -94,7 +106,6 @@ public class WikiSearch {
 	 * @return
 	 */
 	protected int totalRelevance(Integer rel1, Integer rel2) {
-		// simple starting place: relevance is the sum of the term frequencies.
 		return rel1 + rel2;
 	}
 
@@ -104,9 +115,20 @@ public class WikiSearch {
 	 * @return List of entries with URL and relevance.
 	 */
 	public List<Entry<String, Integer>> sort() {
-        // FILL THIS IN!
-		return null;
+		List<Entry<String, Integer>> entries = 
+				new LinkedList<Entry<String, Integer>>(map.entrySet());
+
+		Comparator<Entry<String, Integer>> comparator = new Comparator<Entry<String, Integer>>() {
+            @Override
+            public int compare(Entry<String, Integer> e1, Entry<String, Integer> e2) {
+                return e1.getValue().compareTo(e2.getValue());
+            }
+        };
+        
+		Collections.sort(entries, comparator);
+		return entries;
 	}
+
 
 	/**
 	 * Performs a search and makes a WikiSearch object.
@@ -122,23 +144,19 @@ public class WikiSearch {
 
 	public static void main(String[] args) throws IOException {
 		
-		// make a JedisIndex
 		Jedis jedis = JedisMaker.make();
 		JedisIndex index = new JedisIndex(jedis); 
 		
-		// search for the first term
 		String term1 = "java";
 		System.out.println("Query: " + term1);
 		WikiSearch search1 = search(term1, index);
 		search1.print();
 		
-		// search for the second term
 		String term2 = "programming";
 		System.out.println("Query: " + term2);
 		WikiSearch search2 = search(term2, index);
 		search2.print();
-		
-		// compute the intersection of the searches
+
 		System.out.println("Query: " + term1 + " AND " + term2);
 		WikiSearch intersection = search1.and(search2);
 		intersection.print();
